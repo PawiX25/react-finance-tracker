@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Trash2, DollarSign, TrendingUp, TrendingDown, Filter } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { PlusCircle, Trash2, DollarSign, TrendingUp, TrendingDown, Filter, Target } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { Alert, AlertDescription } from './components/ui/alert';
 
 const FinanceTracker = () => {
@@ -12,6 +12,9 @@ const FinanceTracker = () => {
   const [showAlert, setShowAlert] = useState(false);
   const [filter, setFilter] = useState('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [budgets, setBudgets] = useState({});
+  const [newBudgetCategory, setNewBudgetCategory] = useState('');
+  const [newBudgetAmount, setNewBudgetAmount] = useState('');
 
   useEffect(() => {
     const newBalance = transactions.reduce((acc, transaction) => acc + transaction.amount, 0);
@@ -40,6 +43,17 @@ const FinanceTracker = () => {
     setTransactions(transactions.filter((t) => t.id !== id));
   };
 
+  const addBudget = () => {
+    if (newBudgetCategory && newBudgetAmount) {
+      setBudgets({
+        ...budgets,
+        [newBudgetCategory]: parseFloat(newBudgetAmount)
+      });
+      setNewBudgetCategory('');
+      setNewBudgetAmount('');
+    }
+  };
+
   const filteredTransactions = transactions.filter((t) => {
     if (filter === 'income') return t.amount >= 0;
     if (filter === 'expense') return t.amount < 0;
@@ -60,6 +74,18 @@ const FinanceTracker = () => {
       return acc;
     }, {})
   ).map(([name, value]) => ({ name, value }));
+
+  const budgetData = Object.entries(budgets).map(([category, budget]) => {
+    const spent = filteredTransactions
+      .filter(t => t.category === category && t.amount < 0)
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    return {
+      category,
+      budget,
+      spent,
+      remaining: Math.max(budget - spent, 0)
+    };
+  });
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -205,7 +231,7 @@ const FinanceTracker = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">Financial Overview</h2>
           <div className="h-64">
@@ -243,6 +269,79 @@ const FinanceTracker = () => {
               </PieChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow mb-8">
+        <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <Target className="mr-2" />
+          Budget Tracking
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Set New Budget</h3>
+            <div className="flex flex-col space-y-2">
+              <input
+                type="text"
+                value={newBudgetCategory}
+                onChange={(e) => setNewBudgetCategory(e.target.value)}
+                placeholder="Category"
+                className="p-2 border rounded"
+              />
+              <input
+                type="number"
+                value={newBudgetAmount}
+                onChange={(e) => setNewBudgetAmount(e.target.value)}
+                placeholder="Budget Amount"
+                className="p-2 border rounded"
+              />
+              <button
+                onClick={addBudget}
+                className="bg-green-500 text-white p-2 rounded hover:bg-green-600 transition duration-200"
+              >
+                Set Budget
+              </button>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Budget Overview</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={budgetData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="category" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="budget" fill="#8884d8" name="Budget" />
+                  <Bar dataKey="spent" fill="#82ca9d" name="Spent" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="p-2">Category</th>
+                <th className="p-2">Budget</th>
+                <th className="p-2">Spent</th>
+                <th className="p-2">Remaining</th>
+              </tr>
+            </thead>
+            <tbody>
+              {budgetData.map((budget) => (
+                <tr key={budget.category} className="border-b">
+                  <td className="p-2">{budget.category}</td>
+                  <td className="p-2">${budget.budget.toFixed(2)}</td>
+                  <td className="p-2">${budget.spent.toFixed(2)}</td>
+                  <td className={`p-2 ${budget.remaining > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${budget.remaining.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
